@@ -1,4 +1,19 @@
 
+const showLoader = () => {
+    document.getElementById('loader').classList.remove('hidden');
+    document.getElementById('videoContainer').classList.add('hidden')
+}
+const hideLoader = () => {
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('videoContainer').classList.remove('hidden')
+}
+
+function removeActiveClass() {
+    const activeBtn = document.getElementsByClassName('active');
+    for (const btn of activeBtn) {
+        btn.classList.remove('active')
+    }
+}
 
 function loadCategories() {
     fetch('https://openapi.programming-hero.com/api/phero-tube/categories')
@@ -6,20 +21,33 @@ function loadCategories() {
         .then(data => displayCategories(data.categories))
 }
 
-function loadVideos() {
-    fetch('https://openapi.programming-hero.com/api/phero-tube/videos')
+function loadVideos(searchText = "") {
+    showLoader();
+    fetch(`https://openapi.programming-hero.com/api/phero-tube/videos?title=${searchText}`)
         .then(response => response.json())
-        .then(data => displayVideos(data.videos))
+        .then(data => {
+            
+            removeActiveClass();
+            document.getElementById('btn-all').classList.add('active')
+            displayVideos(data.videos)
+        })
 }
 
+
 const loadCategoryVideos = (id) => {
+    showLoader();
     // console.log(id)
     const url =
         `https://openapi.programming-hero.com/api/phero-tube/category/${id}`
 
     fetch(url)
         .then(res => res.json())
-        .then(data => displayVideos(data.category))
+        .then(data => {
+            removeActiveClass()
+            const clickedBtn = document.getElementById(`btn-${id}`)
+            clickedBtn.classList.add('active')
+            displayVideos(data.category)
+        })
 }
 
 // {
@@ -28,6 +56,7 @@ const loadCategoryVideos = (id) => {
 // }
 
 function displayCategories(categories) {
+    
 
     const categoriesContainer = document.getElementById('categoryContainer');
 
@@ -35,7 +64,7 @@ function displayCategories(categories) {
         // console.log(category)
         const categoryDiv = document.createElement('div');
         categoryDiv.innerHTML = `
-            <button onclick="loadCategoryVideos(${category.category_id})" class="btn btn-sm hover:bg-[#FF1F3D] hover:text-white">${category.category}</button>
+            <button id="btn-${category.category_id}" onclick="loadCategoryVideos(${category.category_id})" class="btn btn-sm hover:bg-[#FF1F3D] hover:text-white">${category.category}</button>
         `;
         categoriesContainer.appendChild(categoryDiv);
 
@@ -64,8 +93,18 @@ function displayCategories(categories) {
 const displayVideos = (videos) => {
     const videoContainer = document.getElementById('videoContainer');
     videoContainer.innerHTML = "";
+    if (videos.length === 0) {
+        videoContainer.innerHTML =
+            `<div class="col-span-full flex flex-col justify-center items-center py-20 ">
+            <img src="assets/images/Icon.png" alt="">
+            <h2 class="font-bold text-2xl py-3 text-center">Oops!! Sorry, There is no <br>content here</h2>
+        </div>`;
+        hideLoader()
+
+        return;
+    }
     videos.forEach(video => {
-        console.log(video)
+        // console.log(video)
         const videoDiv = document.createElement('div');
         videoDiv.innerHTML = `
             <div class="card bg-base-100">
@@ -84,17 +123,70 @@ const displayVideos = (videos) => {
                 </div>
                 <div class="intro">
                     <h2 class="font-semibold text-lg">${video.title}</h2>
-                    <p class="flex gap-2 text-sm text-gray-400">${video.authors[0].profile_name}<img class="w-5 h-5"
-                            src="https://img.icons8.com/?size=48&id=98A4yZTt9abw&format=png" alt=""></p>
+                    <p class="flex gap-2 text-sm text-gray-400">
+                        ${video.authors[0].profile_name}
+                        ${video.authors[0].verified ? `<img class="w-5 h-5"
+                            src="https://img.icons8.com/?size=48&id=98A4yZTt9abw&format=png" alt=""></img>` : ``}
+                    </p>
                     <p class="text-sm text-gray-400">${video.others.views} views</p>
                 </div>
             </div>
+            <button onclick="loadVideoDetails('${video.video_id}')" class="btn btn-block">Show Details</button>
         </div>
         `;
 
-        videoContainer.append(videoDiv)
+        videoContainer.append(videoDiv);
+        
     });
+
+    hideLoader();
 }
+
+const loadVideoDetails = (videoId) => {
+    // console.log(videoId)
+    const url = `https://openapi.programming-hero.com/api/phero-tube/video/${videoId}`
+    fetch(url)
+        .then(res => res.json())
+        .then(data => displayVideoDetails(data.video))
+}
+
+const displayVideoDetails = (video) => {
+    // console.log(videoDetails)
+    document.getElementById('video_details').showModal();
+    const videoContainer = document.getElementById('video-container');
+    videoContainer.innerHTML =
+        `
+    <div class="card bg-base-100 image-full shadow-sm">
+        <figure>
+            <img
+            src="${video.thumbnail}"
+            alt="Shoes" />
+        </figure>
+        <div class="card-body">
+            <h2 class="card-title">${video.title}</h2>
+            <p>${video.description}</p>
+            <div class="card-actions justify-end mt-5">
+                <div class="profile flex gap-3">
+                    <div class="avatar">
+                        <div class="ring-primary ring-offset-base-100 w-6 rounded-full ring ring-offset-2">
+                            <span><img src="${video.authors[0].profile_picture}" /> </span>
+                            
+                        </div>
+                    </div>
+                    <p class="">${video.authors[0].profile_name}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    `
+}
+
+document.getElementById('search-input')
+    .addEventListener("keyup", (event) => {
+        loadVideos(event.target.value)
+    })
+
+    
 
 loadCategories()
 // loadVideos()
